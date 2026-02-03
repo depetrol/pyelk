@@ -1,6 +1,6 @@
 """Using logging and execution time measurement."""
 import json
-from elkpy import ELK
+from pyelk import ELK
 
 elk = ELK()
 

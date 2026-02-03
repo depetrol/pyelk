@@ -1,4 +1,4 @@
-"""Main ELK class - the primary API for the elkpy library."""
+"""Main ELK class - the primary API for the pyelk library."""
 import copy
 import time
 from typing import Any, Dict, List, Optional

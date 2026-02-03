@@ -1,6 +1,6 @@
 """Using ports to control edge attachment points."""
 import json
-from elkpy import ELK
+from pyelk import ELK
 
 elk = ELK()
 

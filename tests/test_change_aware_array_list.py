@@ -1,6 +1,6 @@
 """Port of testChangeAwareArrayList.js - large graph layout test (Les Miserables)."""
 import pytest
-from elkpy import ELK
+from pyelk import ELK
 
 
 @pytest.fixture

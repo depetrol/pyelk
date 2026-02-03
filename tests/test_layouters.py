@@ -1,7 +1,7 @@
 """Port of testLayouters.js - tests different layout algorithms."""
 import copy
 import pytest
-from elkpy import ELK
+from pyelk import ELK
 
 
 GRAPH = {

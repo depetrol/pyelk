@@ -1,7 +1,7 @@
 """Port of testOptions.js - tests layout options parsing and application."""
 import copy
 import pytest
-from elkpy import ELK, UnsupportedConfigurationException
+from pyelk import ELK, UnsupportedConfigurationException
 
 
 SIMPLE_GRAPH = {

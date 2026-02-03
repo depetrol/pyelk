@@ -1,6 +1,6 @@
 """Port of test-bug-klay-23.js - unspecified bendpoints."""
 import pytest
-from elkpy import ELK
+from pyelk import ELK
 
 
 SIMPLE_GRAPH = {

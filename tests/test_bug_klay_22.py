@@ -1,7 +1,7 @@
 """Port of test-bug-klay-22.js - node label placement."""
 import copy
 import pytest
-from elkpy import ELK
+from pyelk import ELK
 
 
 SIMPLE_GRAPH = {

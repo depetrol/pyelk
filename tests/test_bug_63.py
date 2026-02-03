@@ -1,6 +1,6 @@
 """Port of test-bug-63.js - COFFMAN_GRAHAM layering with self-loops."""
 import pytest
-from elkpy import ELK
+from pyelk import ELK
 
 
 @pytest.fixture

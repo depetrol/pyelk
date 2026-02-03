@@ -1,7 +1,7 @@
 """Demonstrating layout options: constructor defaults, per-call options,
 and element-specific options."""
 import json
-from elkpy import ELK
+from pyelk import ELK
 
 # Constructor-level defaults apply to every layout call
 elk = ELK(default_layout_options={

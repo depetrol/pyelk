@@ -1,6 +1,6 @@
 """Port of test-bug-7.js - regression test for bug #7 (large graph with ports)."""
 import pytest
-from elkpy import ELK
+from pyelk import ELK
 
 
 @pytest.fixture

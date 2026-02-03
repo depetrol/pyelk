@@ -1,8 +1,8 @@
-# elkpy
+# pyelk
 
 A pure Python port of [elkjs](https://github.com/kieler/elkjs) - automatic graph layout based on the [Eclipse Layout Kernel (ELK)](https://www.eclipse.org/elk/).
 
-elkpy computes positions for nodes, edges, ports, and labels in a graph. It is not a diagramming framework itself - it only calculates coordinates. You can use these coordinates with any rendering library (matplotlib, SVG, HTML canvas, etc.).
+pyelk computes positions for nodes, edges, ports, and labels in a graph. It is not a diagramming framework itself - it only calculates coordinates. You can use these coordinates with any rendering library (matplotlib, SVG, HTML canvas, etc.).
 
 ## Installation
 
@@ -19,7 +19,7 @@ pip install -e ".[dev]"
 ## Quick Start
 
 ```python
-from elkpy import ELK
+from pyelk import ELK
 
 elk = ELK()
 
@@ -53,7 +53,7 @@ n3: x=62.0, y=62.0
 
 ## Graph Format
 
-elkpy uses the [ELK JSON format](https://www.eclipse.org/elk/documentation/tooldevelopers/graphdatastructure/jsonformat.html). A graph is a Python dictionary with the following structure:
+pyelk uses the [ELK JSON format](https://www.eclipse.org/elk/documentation/tooldevelopers/graphdatastructure/jsonformat.html). A graph is a Python dictionary with the following structure:
 
 ```python
 graph = {
@@ -83,7 +83,7 @@ graph = {
 
 ### Edge Formats
 
-elkpy supports two edge formats:
+pyelk supports two edge formats:
 
 **Extended format** (recommended):
 ```python
@@ -97,7 +97,7 @@ elkpy supports two edge formats:
 
 ## Layout Algorithms
 
-elkpy includes the following layout algorithms:
+pyelk includes the following layout algorithms:
 
 | Algorithm | ID | Description |
 |---|---|---|
@@ -336,7 +336,7 @@ Returns a list of algorithm categories.
 
 ## Differences from elkjs
 
-- **Synchronous API**: elkpy's `layout()` returns the result directly instead of a Promise. No web workers are needed.
+- **Synchronous API**: pyelk's `layout()` returns the result directly instead of a Promise. No web workers are needed.
 - **Pure Python**: No JavaScript runtime, GWT compilation, or external dependencies required.
 - **Same graph format**: Uses the same ELK JSON format as elkjs, so graphs are interchangeable.
 - **Same layout options**: All ELK layout option keys work the same way.
@@ -359,6 +359,9 @@ See the [`examples/`](examples/) directory for runnable scripts:
 pip install -e ".[dev]"
 pytest
 ```
+
+## Acknowledgements
+Thanks to the authors of [ELK](https://eclipse.dev/elk/) and [elkjs](https://github.com/kieler/elkjs) for their implementations as reference. Thanks to [claude-code](https://github.com/anthropics/claude-code) for helping with the Python implementation.
 
 ## License
 

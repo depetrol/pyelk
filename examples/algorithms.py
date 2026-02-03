@@ -1,6 +1,6 @@
 """Comparing different layout algorithms on the same graph."""
 import json
-from elkpy import ELK
+from pyelk import ELK
 
 elk = ELK()
 

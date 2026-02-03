@@ -1,6 +1,6 @@
 """Port of testIds.js - tests element ID validation."""
 import pytest
-from elkpy import ELK, InvalidGraphException
+from pyelk import ELK, InvalidGraphException
 
 
 @pytest.fixture

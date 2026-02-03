@@ -1,6 +1,6 @@
-"""Basic elkpy usage - lay out a simple graph."""
+"""Basic pyelk usage - lay out a simple graph."""
 import json
-from elkpy import ELK
+from pyelk import ELK
 
 elk = ELK()
 

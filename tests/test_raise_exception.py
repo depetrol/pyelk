@@ -1,6 +1,6 @@
 """Port of testRaiseException.js - tests exception handling."""
 import pytest
-from elkpy import ELK, UnsupportedConfigurationException
+from pyelk import ELK, UnsupportedConfigurationException
 
 
 class TestExceptions:

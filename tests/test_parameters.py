@@ -1,6 +1,6 @@
 """Port of testParameters.js - tests parameter validation."""
 import pytest
-from elkpy import ELK
+from pyelk import ELK
 
 
 @pytest.fixture

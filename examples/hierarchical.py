@@ -1,6 +1,6 @@
 """Hierarchical (nested) graph layout."""
 import json
-from elkpy import ELK
+from pyelk import ELK
 
 elk = ELK()
 

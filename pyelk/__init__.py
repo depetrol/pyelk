@@ -1,4 +1,4 @@
-"""elkpy - Python port of elkjs graph layout library.
+"""pyelk - Python port of elkjs graph layout library.
 
 Provides automatic graph layout based on the Eclipse Layout Kernel (ELK).
 """

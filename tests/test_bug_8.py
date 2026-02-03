@@ -1,7 +1,7 @@
 """Port of test-bug-8.js - tests hierarchical layouts with edge sections."""
 import copy
 import pytest
-from elkpy import ELK, UnsupportedGraphException
+from pyelk import ELK, UnsupportedGraphException
 
 
 GRAPH = {

@@ -1,7 +1,7 @@
 """Port of testLogging.js - tests logging and execution time measurement."""
 import copy
 import pytest
-from elkpy import ELK
+from pyelk import ELK
 
 
 SIMPLE_GRAPH = {
