@@ -15,6 +15,7 @@ from ...options import (
     get_option, get_padding, get_spacing, get_direction,
     resolve_option_key, get_effective_options
 )
+from .brandes_kozen import align_and_pack as _bk_align_and_pack
 from ...exceptions import UnsupportedConfigurationException
 
 
@@ -76,7 +77,15 @@ class LEdge:
 
 
 class LayeredLayoutProvider:
-    """Implements Sugiyama's layered layout algorithm."""
+    """Implements Sugiyama's layered layout algorithm.
+
+    Phases: cycle breaking, layering, dummy insertion, crossing
+    minimisation, node placement (:meth:`_place_nodes` — centred
+    stacking or Brandes-Köpnig per ``elk.layered.nodePlacement.strategy``,
+    see ``brandes_kozen.py`` and ``docs/brandes_kozen.md``) and edge
+    routing (:meth:`_route_edges`, straight-legacy or Manhattan per
+    ``elk.edgeRouting``).
+    """
 
     def layout(self, graph: dict, global_options: dict = None) -> None:
         """Layout the graph using the layered algorithm."""
@@ -127,10 +136,13 @@ class LayeredLayoutProvider:
 
         # Phase 5: Node placement
         horizontal = direction in ('RIGHT', 'LEFT')
-        self._place_nodes(layers, node_spacing, layer_spacing, padding, horizontal, direction)
+        self._place_nodes(layers, node_spacing, layer_spacing, padding,
+                          horizontal, direction, eff_options=eff_options)
 
         # Phase 6: Edge routing
-        self._route_edges(edges, node_map, port_map, horizontal, direction)
+        self._route_edges(edges, node_map, port_map, horizontal, direction,
+                          edge_routing=str(eff_options.get('elk.edgeRouting')
+                                           or ''))
 
         # Place labels
         self._place_labels(nodes, eff_options, global_options)
@@ -549,15 +561,78 @@ class LayeredLayoutProvider:
         layer.sort(key=lambda n: barycenters.get(n.id, float('inf')))
 
     def _place_nodes(self, layers, node_spacing, layer_spacing, padding,
-                     horizontal, direction):
-        """Place nodes, assigning x/y coordinates."""
+                     horizontal, direction, eff_options=None):
+        """Place nodes, assigning x/y coordinates.
+
+        ``elk.layered.nodePlacement.strategy`` 'BRANDES_KOZEN' (alias
+        'BRANDES') selects the Brandes-Köpnig coordinate assignment; any
+        other value keeps the centred stacking fallback."""
         if not layers:
             return
-
-        if horizontal:
-            self._place_horizontal(layers, node_spacing, layer_spacing, padding, direction)
+        eff_options = eff_options or {}
+        strategy = str(eff_options.get('elk.layered.nodePlacement.strategy') or
+                       eff_options.get('nodePlacement.strategy') or 'SIMPLE')
+        if 'BRANDES' in strategy.upper():
+            self._place_brandes_kozen(layers, node_spacing, layer_spacing,
+                                      padding, horizontal, direction)
+        elif horizontal:
+            self._place_horizontal(layers, node_spacing, layer_spacing,
+                                   padding, direction)
         else:
-            self._place_vertical(layers, node_spacing, layer_spacing, padding, direction)
+            self._place_vertical(layers, node_spacing, layer_spacing,
+                                 padding, direction)
+
+    def _place_brandes_kozen(self, layers, node_spacing, layer_spacing,
+                             padding, horizontal, direction):
+        """Phase-5 placement via Brandes-Köpnig coordinate assignment.
+
+        Strategy BRANDES_KOZEN of the ELK layered algorithm (alias
+        'BRANDES').  Four vertical-alignment scans over the edge chains
+        (source -> dummy nodes -> target) build non-crossing chains;
+        each chain is packed to a single shared centre so its edges run
+        straight, guarded by per-layer cursors against overlap.  The
+        narrowest scan wins.  Method notes, deviations from the printed
+        pseudocode and the references (original LNCS 2265 paper + the
+        arXiv erratum) live in ``docs/brandes_kozen.md`` and the
+        ``brandes_kozen`` module docstring."""
+        all_nodes = [n for layer in layers for n in layer]
+        if not all_nodes:
+            return
+        chains = self._bk_chains(all_nodes)
+        placed = _bk_align_and_pack(layers, all_nodes, chains, node_spacing,
+                                    layer_spacing, padding, horizontal)
+        for n in all_nodes:
+            half = (n.width if not horizontal else n.height) / 2.0
+            if horizontal:
+                # RIGHT/LEFT: layers march along x, within-layer is y
+                n.x, n.y = (placed['along'][id(n)] - half,
+                            placed['step'][id(n)] - n.height / 2.0)
+            else:
+                # DOWN/UP: layers march along y, within-layer is x; the
+                # BK step coordinate is a node CENTRE — convert to the
+                # top-left origin the write-back machinery expects
+                n.x = placed['step'][id(n)] - n.width / 2.0
+                n.y = placed['along'][id(n)]
+
+    def _bk_chains(self, all_nodes):
+        """Per-edge node chains (source -> dummies -> target) ordered by
+        layer, as ((layer, node), ...) tuples for the BK assigner."""
+        chains = []
+        for e in self._bk_edges(all_nodes):
+            if e.is_self_loop:
+                continue
+            chain = ([e.source]
+                     + sorted(e.dummy_nodes, key=lambda d: d.layer)
+                     + [e.target])
+            chains.append([(n.layer, n) for n in chain])
+        return chains
+
+    def _bk_edges(self, all_nodes):
+        edges = set()
+        for n in all_nodes:
+            edges.update(n.incoming)
+            edges.update(n.outgoing)
+        return edges
 
     def _place_vertical(self, layers, node_spacing, layer_spacing, padding, direction):
         """Place nodes for DOWN/UP direction."""
@@ -613,8 +688,17 @@ class LayeredLayoutProvider:
 
             current_x += max_width + layer_spacing
 
-    def _route_edges(self, edges, node_map, port_map, horizontal, direction):
-        """Route edges between nodes."""
+    def _route_edges(self, edges, node_map, port_map, horizontal, direction,
+                     edge_routing=''):
+        """Route edges between nodes.
+
+        ``edgeRouting: ORTHOGONAL`` (the default from the UML/SysML graph
+        exporters) routes every edge as a Manhattan channel: perpendicular
+        exit, cross the inter-layer band at a channel line, perpendicular
+        entry.  BK-aligned chains run straight (same centre through the
+        band).  Other values keep the legacy straight-line routing."""
+        orthogonal = edge_routing.upper() == 'ORTHOGONAL'
+        lanes = {}
         for edge in edges:
             if edge.is_self_loop:
                 continue
@@ -642,17 +726,62 @@ class LayeredLayoutProvider:
             if edge.reversed:
                 sp, ep = ep, sp
 
-            # Collect bend points from dummy nodes
-            bend_points = []
-            for dummy in edge.dummy_nodes:
-                if horizontal:
+            if not orthogonal:
+                # Collect bend points from dummy nodes
+                bend_points = []
+                for dummy in edge.dummy_nodes:
                     bend_points.append((dummy.x + dummy.width / 2,
                                         dummy.y + dummy.height / 2))
-                else:
-                    bend_points.append((dummy.x + dummy.width / 2,
-                                        dummy.y + dummy.height / 2))
+                edge.bend_points = bend_points
+                continue
 
+            # ORTHOGONAL: walk the chain source -> dummies -> target,
+            # Manhattan between consecutive anchors, straight whenever
+            # the anchors already share the within-layer coordinate
+            anchors = [(edge.source, sp)]
+            for d in sorted(edge.dummy_nodes, key=lambda dd: dd.layer):
+                anchors.append((d, (d.x + d.width / 2,
+                                    d.y + d.height / 2)))
+            anchors.append((edge.target, ep))
+            if edge.reversed:
+                anchors.reverse()
+            bend_points = []
+            for (u, pu), (w, pw) in zip(anchors, anchors[1:]):
+                axis = 1 if horizontal else 0        # within-layer coord
+                step_axis = 0 if horizontal else 1   # layer-stacking coord
+                if abs(pu[axis] - pw[axis]) < 1e-6:
+                    continue                          # BK-straight: no bend
+                li_band = min(u.layer, w.layer)
+                k = lanes.get(li_band, 0)
+                lanes[li_band] = k + 1
+                # channel between the two layer bands, lanes spread
+                # symmetrically to keep parallel runs distinct
+                if horizontal:
+                    u_edge = u.x + u.width      # layer bands along x
+                    w_edge = w.x
+                else:
+                    u_edge = u.y + u.height     # layer bands along y
+                    w_edge = w.y
+                mid = (u_edge + w_edge) / 2.0
+                off = (k // 2) * 6.0 * (1 if k % 2 == 0 else -1)
+                ch = mid + off
+                ch = max(ch, u_edge + 2.0) if w_edge > u_edge else \
+                    min(ch, u_edge - 2.0)
+                b1 = [0.0, 0.0]
+                b2 = [0.0, 0.0]
+                b1[axis] = pu[axis]
+                b1[step_axis] = ch
+                b2[axis] = pw[axis]
+                b2[step_axis] = ch
+                if abs(pu[step_axis] - ch) > 1e-6 or \
+                        abs(pw[step_axis] - ch) > 1e-6:
+                    bend_points.append(tuple(b1))
+                    bend_points.append(tuple(b2))
             edge.bend_points = bend_points
+            edge._orthogonal_points = (
+                [tuple(anchors[0][1])]
+                + list(bend_points)
+                + [tuple(anchors[-1][1])])
 
     def _get_node_connection_point(self, node, horizontal, direction, is_source):
         """Get the connection point on a node for an edge."""
@@ -789,8 +918,16 @@ class LayeredLayoutProvider:
             else:
                 actual_src, actual_tgt = src, tgt
 
-            sp = self._get_node_connection_point(actual_src, horizontal, direction, True)
-            ep = self._get_node_connection_point(actual_tgt, horizontal, direction, False)
+            route = getattr(edge, '_orthogonal_points', None)
+            if route:
+                # the orthogonal router computed port-anchored heads —
+                # re-deriving them here would cut the first/last bends
+                sp, ep = route[0], route[-1]
+                bends = route[1:-1]
+            else:
+                sp = self._get_node_connection_point(actual_src, horizontal, direction, True)
+                ep = self._get_node_connection_point(actual_tgt, horizontal, direction, False)
+                bends = edge.bend_points
 
             section = {
                 'id': edge.id + '_s0',
@@ -798,9 +935,9 @@ class LayeredLayoutProvider:
                 'endPoint': {'x': ep[0], 'y': ep[1]},
             }
 
-            if edge.bend_points:
+            if bends:
                 section['bendPoints'] = [{'x': bp[0], 'y': bp[1]}
-                                         for bp in edge.bend_points]
+                                         for bp in bends]
 
             edge.original['sections'] = [section]
 

@@ -366,3 +366,16 @@ Thanks to the authors of [ELK](https://eclipse.dev/elk/) and [elkjs](https://git
 ## License
 
 EPL-2.0 (same as ELK)
+
+### nodePlacement.strategy (layered)
+
+Method notes, algorithm walk-through and references:
+[docs/brandes_kozen.md](docs/brandes_kozen.md).
+
+`BRANDES_KOZEN` (alias `BRANDES`) is implemented since 0.3.1:
+Brandes–Köpnig horizontal coordinate assignment — four vertical-alignment
+scans build non-crossing alignment chains (long edges straighten through
+their dummy nodes), conflicts resolved by endpoint degree, chains packed
+with per-layer cursors; the narrowest scan wins. Other strategies fall
+back to centred stacking. Note `NETWORK_SIMPLEX` is only a *layering*
+strategy here; node placement ignores it.
